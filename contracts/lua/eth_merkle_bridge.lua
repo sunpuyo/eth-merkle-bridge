@@ -25,6 +25,10 @@ local function _typecheck(x, t)
     -- check unsigned bignum
     assert(bignum.isbignum(x), string.format("invalid type: %s != %s", type(x), t))
     assert(x >= bignum.number(0), string.format("%s must be positive number", bignum.tostring(x)))
+  elseif (x and t == 'str128') then
+    assert(type(x) == 'string', "str128 must be string type")
+    -- check address length
+    assert(128 >= #x, string.format("too long str128 length: %s", #x))
   else
     -- check default lua types
     assert(type(x) == t, string.format("invalid type: %s != %s", type(x), t or 'nil'))
@@ -80,6 +84,21 @@ state.var {
     -- _mintedTokens is used for preventing a minted token from being locked instead of burnt.
     -- (Aergo address) -> (Ethereum address)
     _mintedTokens = state.map(),
+
+    -- Registers burnt token's block height per account reference : user provides merkle proof of burnt token's block height
+    -- (account ref string) -> (string block height)
+    _burnsARC2 = state.map(),
+    -- Registers locked token's block height per account reference: user provides merkle proof of locked token's block height
+    -- (account ref string) -> (string block height)
+    _mintsARC2 = state.map(),
+
+    -- _bridgeNFTs keeps track of NFTs that were received through the bridge
+    -- (Ethereum address) -> (Aergo address)
+    _bridgeNFTs = state.map(),
+    -- _mintedNFTs is the same as _bridgeNFTs but keys and values are swapped
+    -- _mintedNFTs is used for preventing a minted NFT from being locked instead of burnt.
+    -- (Aergo address) -> (Ethereum address)
+    _mintedNFTs = state.map(),
 }
 
 
@@ -301,7 +320,7 @@ end
 -- @type    call
 -- @param   receiver (ethaddress) Ethereum address without 0x of receiver
 -- @param   amount (ubig) number of tokens to burn
--- @param   mintAddress (address) Aergo address of pegged token to burn
+-- @param   mintAddress (address) Aergo token contract address of pegged token to burn
 -- @return  (ethaddress) Ethereum address without 0x of origin token
 -- @event   brun(owner, receiver, amount, mintAddress)
 function burn(receiver, amount, mintAddress)
@@ -326,6 +345,91 @@ function burn(receiver, amount, mintAddress)
     contract.event("burn", system.getSender(), receiver, amount, mintAddress)
     return originAddress
 end
+
+-- mint a pegged ARC2 NFT locked on Ethereum
+-- anybody can mint, the receiver is the account who's locked tokenId is recorded
+-- @type    call
+-- @param   receiver (address) Aergo address of receiver
+-- @param   tokenId (ubig) the ERC721 token ID locked on Ethereum
+-- @param   lockERC721BlockNum (ubig) the block number of the tx that sends ERC721 to the Ether Merkle Bridge
+-- @param   tokenOrigin (ethaddress) Ethereum address without 0x of ERC721 token locked
+-- @param   merkleProof ([]0x hex string) merkle proof of inclusion of locked balance on Ethereum
+-- @return  (address, uint) pegged token Aergo address, minted amount
+-- @event   mintARC2(minter, receiver, tokenId, lockERC721BlockNum, tokenOrigin)
+function mintARC2(receiver, tokenId, lockERC721BlockNum, tokenOrigin, merkleProof)
+  _typecheck(receiver, 'address')
+  _typecheck(tokenId, 'ubig')
+  _typecheck(lockERC721BlockNum, 'ubig')
+  _typecheck(tokenOrigin, 'ethaddress')
+  
+  tokenOriginBytes = _abiEncode(tokenOrigin)
+  
+  -- Verify merkle proof of locked NFT
+  local accountRef = receiver .. bignum.tostring(tokenId) .. tokenOriginBytes
+  -- LocksARC2 is the 13th variable of eth_merkle_bridge.col so mapPosition = 12
+  if not verifyDepositProof(accountRef, 12, bignum.tobyte(lockERC721BlockNum), merkleProof) then
+      error("failed to verify merkle proof of a locked NFT")
+  end
+
+  assert(_mintsARC2[accountRef] ~= bignum.tostring(lockERC721BlockNum), "already minted token")
+
+  -- Deploy or get the minted token
+  local mintAddress
+  if _bridgeNFTs[tokenOrigin] == nil then
+      -- Deploy new mintable NFT controlled by bridge
+      mintAddress = _deployMintableNFT(tokenOrigin)
+      _bridgeNFTs[tokenOrigin] = mintAddress
+      _mintedNFTs[mintAddress] = tokenOrigin
+  else
+      mintAddress = _bridgeNFTs[tokenOrigin]
+  end
+  -- Record lockERC721BlockNum
+  _mintsARC2[accountRef] = bignum.tostring(lockERC721BlockNum)
+  -- Mint tokens
+  contract.call(mintAddress, "mint", receiver, bignum.tostring(tokenId))
+  contract.event("mint", system.getSender(), receiver, bignum.tostring(tokenId), lockERC721BlockNum, tokenOrigin)
+
+  return mintAddress
+end
+
+-- Implementation of ARC2 token receiver interface
+-- @param   operator    (address) a address which called token 'transfer' function
+-- @param   from        (address) a sender's address
+-- @param   value       (ubig) an amount of token to send
+-- @param   receiver    (ethaddress) Ethereum address without 0x of receiver accross the bridge
+-- @type    call
+function onARC2Received(operator, from, tokenId, receiver)
+  return _burnARC2(receiver, tokenId, system.getSender())
+end
+
+-- burn a pegged NFT
+-- @type    call
+-- @param   receiver (ethaddress) Ethereum address without 0x of receiver
+-- @param   tokenId (str128) token Id to burn
+-- @param   arc2Address (address) Aergo NFT contract address of pegged token to burn
+-- @return  (ethaddress) Ethereum address without 0x of origin token
+-- @event   brun(owner, receiver, amount, mintAddress)
+local function _burnARC2(receiver, tokenId, arc2Address)
+  _typecheck(receiver, 'ethaddress')
+  _typecheck(tokenId, 'str128')
+  
+  local originAddress = _mintedNFTs[arc2Address]
+  assert(originAddress ~= nil, "cannot burn NFT : must have been minted by bridge")
+
+  -- record burn
+  local mintAccountRef = receiver .. tokenId .. _abiEncode(originAddress)
+  local lockERC721BlockNum = _mintsARC2[mintAccountRef]
+
+  local accountRef = _abiEncode(receiver .. tokenId .. originAddress)
+  _burnsARC2[accountRef] = lockERC721BlockNum
+
+  -- Burn NFT
+  contract.call(arc2Address, "burn", tokenId)
+  contract.event("burn", system.getSender(), receiver, tokenId, lockERC721BlockNum, arc2Address)
+  
+  return originAddress
+end
+
 
 -- unlock tokens
 -- anybody can unlock, the receiver is the account who's burnt balance is recorded
@@ -905,5 +1009,5 @@ abi.register(setApprovalForAll, safeTransferFrom, approve, mint, burn)
 abi.register_view(name, symbol, balanceOf, ownerOf, getApproved, isApprovedForAll) 
 ]]
 
-abi.register(verifyDepositProof, oracleUpdate, newAnchor, tAnchorUpdate, tFinalUpdate, unfreezeFeeUpdate, tokensReceived, mint, burn, unlock, unfreeze)
+abi.register(verifyDepositProof, oracleUpdate, newAnchor, tAnchorUpdate, tFinalUpdate, unfreezeFeeUpdate, tokensReceived, mint, burn, unlock, unfreeze, mintARC2, onARC2Received)
 abi.payable(freeze, default)
