@@ -1,4 +1,4 @@
-pragma solidity ^0.5.10;
+pragma solidity ^0.8.0;
 
 import "./eth_merkle_bridge.sol";
 
@@ -221,9 +221,9 @@ contract Oracle {
                 proofIndex++;
             } else {
                 if (bitIsSet(trieKey, i-1)) {
-                    nodeHash = sha256(abi.encodePacked(byte(0x00), nodeHash));
+                    nodeHash = sha256(abi.encodePacked(bytes1(0x00), nodeHash));
                 } else {
-                    nodeHash = sha256(abi.encodePacked(nodeHash, byte(0x00)));
+                    nodeHash = sha256(abi.encodePacked(nodeHash, bytes1(0x00)));
                 }
             }
         }

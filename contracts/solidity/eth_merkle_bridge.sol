@@ -1,8 +1,11 @@
-pragma solidity ^0.5.10;
+pragma solidity ^0.8.0;
 
 import "./minted_erc20.sol";
+import "github.com/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol#5cd86f740d9a4b351cad196e7957a7d0406e7368";
+import "github.com/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol#5cd86f740d9a4b351cad196e7957a7d0406e7368";
 
-contract EthMerkleBridge {
+
+contract EthMerkleBridge is IERC721Receiver, IERC165 {
     // Trie root of the opposit side bridge contract. Mints and Unlocks require a merkle proof
     // of state inclusion in this last Root.
     bytes32 public _anchorRoot;
@@ -31,9 +34,16 @@ contract EthMerkleBridge {
     // _mintedTokens is used for preventing a minted token from being locked instead of burnt.
     mapping(address => string) public _mintedTokens;
 
+    // Registers locked token's block number per account reference: user provides merkle proof
+    mapping(bytes => uint) public _locksERC721;
+    // Registers unlocked token's the locked block number per account reference : user provides merkle proof
+    mapping(bytes => uint) public _unlocksERC721;
+
     event newMintedERC20(string indexed origin, MintedERC20 indexed addr);
     event lockEvent(address indexed sender, IERC20 indexed tokenAddress, string indexed receiver, uint amount);
     event unlockEvent(address indexed sender, IERC20 indexed tokenAddress, address indexed receiver, uint amount);
+    event lockERC721Event(address indexed sender, address indexed tokenAddress, string indexed receiver, uint tokenId, uint blockNumber);
+    event unlockERC721Event(address indexed sender, address indexed tokenAddress, address indexed receiver, uint tokenId, uint blockNumber);
     event mintEvent(address indexed sender, MintedERC20 indexed tokenAddress, address indexed receiver, uint amount);
     event burnEvent(address indexed sender, MintedERC20 indexed tokenAddress, string indexed receiver, uint amount);
     event anchorEvent(address indexed sender, bytes32 root, uint height);
@@ -44,7 +54,7 @@ contract EthMerkleBridge {
     constructor(
         uint tAnchor,
         uint tFinal
-    ) public {
+    ) {
         _tAnchor = tAnchor;
         _tFinal = tFinal;
         // the oracle is set to the sender who must transfer ownership to oracle contract
@@ -52,6 +62,10 @@ contract EthMerkleBridge {
         _oracle = msg.sender;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
+        return interfaceId == type(IERC721Receiver).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
+    }
 
     // Throws if called by any account other than the owner.
     modifier onlyOracle() {
@@ -152,6 +166,21 @@ contract EthMerkleBridge {
         return true;
     }
 
+    // implementation of IERC721Receiver
+    // lock ERC721 token to bridge contract
+    // @param   receiverAergoAddress - receiving aergo address
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata receiverAergoAddress) external override (IERC721Receiver) returns (bytes4) {
+
+        string memory receiverStr = string(receiverAergoAddress);
+        // Record block number
+        bytes memory accountRef = abi.encodePacked(receiverStr, uintToString(tokenId), msg.sender);
+        _locksERC721[accountRef] = block.number;
+        
+        emit lockERC721Event(from, msg.sender, receiverStr, tokenId, block.number); //TODO check erc721 address and data (receiver address)
+
+        return this.onERC721Received.selector;
+    }
+
     // mint a token locked on Aergo
     // anybody can mint, the receiver is the account who's locked balance is recorded
     // @param   receiver - address of receiver
@@ -175,7 +204,7 @@ contract EthMerkleBridge {
         uint amountToTransfer = balance - mintedSoFar;
         require(amountToTransfer>0, "Lock tokens before minting");
         MintedERC20 mintAddress = _bridgeTokens[tokenOrigin];
-        if (mintAddress == MintedERC20(0)) {
+        if (mintAddress == MintedERC20(address(0))) {
             // first time bridging this token
             mintAddress = new MintedERC20(tokenOrigin);
             _bridgeTokens[tokenOrigin] = mintAddress;
@@ -238,9 +267,9 @@ contract EthMerkleBridge {
                 proofIndex++;
             } else {
                 if (bitIsSet(trieKey, i-1)) {
-                    nodeHash = sha256(abi.encodePacked(byte(0x00), nodeHash));
+                    nodeHash = sha256(abi.encodePacked(bytes1(0x00), nodeHash));
                 } else {
-                    nodeHash = sha256(abi.encodePacked(nodeHash, byte(0x00)));
+                    nodeHash = sha256(abi.encodePacked(nodeHash, bytes1(0x00)));
                 }
             }
         }
@@ -270,7 +299,7 @@ contract EthMerkleBridge {
         bytes memory bstr = new bytes(len);
         uint k = len - 1;
         while (num != 0) {
-            bstr[k--] = byte(uint8(48 + num % 10));
+            bstr[k--] = bytes1(uint8(48 + num % 10));
             num /= 10;
         }
         return string(bstr);
