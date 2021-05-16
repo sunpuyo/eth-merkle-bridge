@@ -181,6 +181,36 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
         return this.onERC721Received.selector;
     }
 
+
+    // unlock ERC721 NFT burnt on Aergo
+    // anybody can unlock, the receiver is the account who's burnt balance is recorded
+    // @param   receiver - address of receiver
+    // @param   tokenId - NFT id
+    // @param   burnARC2BlockNum - the block number of the tx that sends ARC2 to the Aergo Merkle Bridge
+    // @param   token - address of ERC721 token to unlock
+    // @param   mp - merkle proof of inclusion of burnt balance on Aergo
+    // @param   bitmap - bitmap of non default nodes in the merkle proof
+    // @param   leafHeight - height of leaf containing the value in the state SMT
+    function unlockERC721(
+        address receiver,
+        uint tokenId,
+        uint burnARC2BlockNum,
+        IERC721 token,
+        bytes32[] memory mp, // bytes[] is not yet supported so we use a bitmap of proof elements
+        bytes32 bitmap,
+        uint8 leafHeight
+    ) public returns(bool) {
+        
+        bytes memory accountRef = abi.encodePacked(receiver, uintToString(tokenId), address(token));
+        require(_unlocksERC721[accountRef] != burnARC2BlockNum, "Already unlocked token");
+        require(verifyDepositProof("_sv__burnsARC2-", accountRef, burnARC2BlockNum, mp, bitmap, leafHeight), "Failed to verify lock proof");
+
+        _unlocksERC721[accountRef] = burnARC2BlockNum;
+        require(token.safeTransferFrom(address(this), receiver, tokenId), "Failed to transfer unlock");
+        emit unlockERC721Event(msg.sender, token, receiver, tokenId, burnARC2BlockNum);
+        return true;
+    }
+
     // mint a token locked on Aergo
     // anybody can mint, the receiver is the account who's locked balance is recorded
     // @param   receiver - address of receiver

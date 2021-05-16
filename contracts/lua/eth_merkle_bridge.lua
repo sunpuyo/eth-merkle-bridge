@@ -404,11 +404,11 @@ end
 
 -- burn a pegged NFT
 -- @type    call
--- @param   receiver (ethaddress) Ethereum address without 0x of receiver
--- @param   tokenId (str128) token Id to burn
+-- @param   receiver    (ethaddress) Ethereum address without 0x of receiver
+-- @param   tokenId     (str128) token Id to burn
 -- @param   arc2Address (address) Aergo NFT contract address of pegged token to burn
--- @return  (ethaddress) Ethereum address without 0x of origin token
--- @event   brun(owner, receiver, amount, mintAddress)
+-- @return  (string) the block number of the tx that sends ARC2 to the Aergo Merkle Bridge
+-- @event   brun(owner, receiver, tokenId, burnARC2BlockNum, arc2Address)
 local function _burnARC2(receiver, tokenId, arc2Address)
   _typecheck(receiver, 'ethaddress')
   _typecheck(tokenId, 'str128')
@@ -417,17 +417,16 @@ local function _burnARC2(receiver, tokenId, arc2Address)
   assert(originAddress ~= nil, "cannot burn NFT : must have been minted by bridge")
 
   -- record burn
-  local mintAccountRef = receiver .. tokenId .. _abiEncode(originAddress)
-  local lockERC721BlockNum = _mintsARC2[mintAccountRef]
+  local burnARC2BlockNum = bignum.tostring(system.getBlockheight())
 
   local accountRef = _abiEncode(receiver .. tokenId .. originAddress)
-  _burnsARC2[accountRef] = lockERC721BlockNum
+  _burnsARC2[accountRef] = burnARC2BlockNum
 
   -- Burn NFT
   contract.call(arc2Address, "burn", tokenId)
-  contract.event("burn", system.getSender(), receiver, tokenId, lockERC721BlockNum, arc2Address)
+  contract.event("burn", system.getSender(), receiver, tokenId, burnARC2BlockNum, arc2Address)
   
-  return originAddress
+  return burnARC2BlockNum
 end
 
 
