@@ -27,7 +27,6 @@
 				"type": "uint256"
 			}
 		],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "constructor"
 	},
@@ -76,7 +75,6 @@
 		"type": "event"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_anchorHeight",
 		"outputs": [
@@ -86,12 +84,10 @@
 				"type": "uint256"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_anchorRoot",
 		"outputs": [
@@ -101,12 +97,10 @@
 				"type": "bytes32"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_bridge",
 		"outputs": [
@@ -116,12 +110,10 @@
 				"type": "address"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_contractId",
 		"outputs": [
@@ -131,12 +123,10 @@
 				"type": "bytes32"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_destinationBridgeKey",
 		"outputs": [
@@ -146,12 +136,10 @@
 				"type": "bytes32"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_nonce",
 		"outputs": [
@@ -161,12 +149,10 @@
 				"type": "uint256"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_tAnchor",
 		"outputs": [
@@ -176,12 +162,10 @@
 				"type": "uint256"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "_tFinal",
 		"outputs": [
@@ -191,12 +175,10 @@
 				"type": "uint256"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -212,12 +194,10 @@
 				"type": "address"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [
 			{
 				"internalType": "bytes32",
@@ -238,12 +218,10 @@
 				"type": "bool"
 			}
 		],
-		"payable": false,
 		"stateMutability": "pure",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
 		"name": "getValidators",
 		"outputs": [
@@ -253,12 +231,10 @@
 				"type": "address[]"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "bytes",
@@ -283,12 +259,10 @@
 		],
 		"name": "newBridgeAnchor",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "bytes32",
@@ -323,12 +297,10 @@
 		],
 		"name": "newStateAnchor",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "bytes32",
@@ -383,12 +355,10 @@
 		],
 		"name": "newStateAndBridgeAnchor",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "address",
@@ -418,12 +388,10 @@
 		],
 		"name": "oracleUpdate",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [
 			{
 				"internalType": "bytes",
@@ -439,12 +407,10 @@
 				"type": "bytes32"
 			}
 		],
-		"payable": false,
 		"stateMutability": "pure",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -474,12 +440,10 @@
 		],
 		"name": "tAnchorUpdate",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -509,12 +473,10 @@
 		],
 		"name": "tFinalUpdate",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [
 			{
 				"internalType": "bytes32",
@@ -550,12 +512,10 @@
 				"type": "bool"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": false,
 		"inputs": [
 			{
 				"internalType": "address[]",
@@ -585,12 +545,10 @@
 		],
 		"name": "validatorsUpdate",
 		"outputs": [],
-		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [
 			{
 				"internalType": "bytes32",
@@ -626,7 +584,6 @@
 				"type": "bool"
 			}
 		],
-		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
 	}

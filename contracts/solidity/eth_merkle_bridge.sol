@@ -206,8 +206,9 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
         require(verifyDepositProof("_sv__burnsARC2-", accountRef, burnARC2BlockNum, mp, bitmap, leafHeight), "Failed to verify lock proof");
 
         _unlocksERC721[accountRef] = burnARC2BlockNum;
-        require(token.safeTransferFrom(address(this), receiver, tokenId), "Failed to transfer unlock");
-        emit unlockERC721Event(msg.sender, token, receiver, tokenId, burnARC2BlockNum);
+        token.safeTransferFrom(address(this), receiver, tokenId);
+        emit unlockERC721Event(msg.sender, address(token), receiver, tokenId, burnARC2BlockNum);
+
         return true;
     }
 
