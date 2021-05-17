@@ -1,13 +1,18 @@
-pragma solidity ^0.8.0;
+pragma solidity ^0.5.10;
 
-import "github.com/OpenZeppelin/openzeppelin-contracts/blob/5cd86f740d9a4b351cad196e7957a7d0406e7368/contracts/token/ERC20/ERC20.sol";
+import "github.com/OpenZeppelin/openzeppelin-contracts/blob/852e11c2dbb19a4000decacf1840f5e4c29c5543/contracts/token/ERC20/ERC20.sol";
+
 
 contract MintedERC20 is ERC20 {
 
     address creator;
-    
-    constructor(string memory tokenOrigin) ERC20(tokenOrigin, "PEG") {
+    string public name;
+    string public constant symbol = 'PEG';
+    string public constant decimals = "Query decimals at token origin";
+
+    constructor(string memory tokenOrigin) public {
         creator = msg.sender;
+        name = tokenOrigin;
     }
 
     modifier onlyCreator() {

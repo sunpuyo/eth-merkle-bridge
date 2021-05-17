@@ -1,9 +1,9 @@
-pragma solidity ^0.8.0;
+pragma solidity ^0.5.10;
 
 import "./minted_erc20.sol";
-import "github.com/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol#5cd86f740d9a4b351cad196e7957a7d0406e7368";
-import "github.com/OpenZeppelin/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol#5cd86f740d9a4b351cad196e7957a7d0406e7368";
 
+import "./IERC721.sol";
+import "./IERC721Receiver.sol";
 
 contract EthMerkleBridge is IERC721Receiver, IERC165 {
     // Trie root of the opposit side bridge contract. Mints and Unlocks require a merkle proof
@@ -34,7 +34,7 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
     // _mintedTokens is used for preventing a minted token from being locked instead of burnt.
     mapping(address => string) public _mintedTokens;
 
-    // Registers locked token's block number per account reference: user provides merkle proof
+     // Registers locked token's block number per account reference: user provides merkle proof
     mapping(bytes => uint) public _locksERC721;
     // Registers unlocked token's the locked block number per account reference : user provides merkle proof
     mapping(bytes => uint) public _unlocksERC721;
@@ -54,7 +54,7 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
     constructor(
         uint tAnchor,
         uint tFinal
-    ) {
+    ) public {
         _tAnchor = tAnchor;
         _tFinal = tFinal;
         // the oracle is set to the sender who must transfer ownership to oracle contract
@@ -62,9 +62,12 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
         _oracle = msg.sender;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
-        return interfaceId == type(IERC721Receiver).interfaceId
-            || interfaceId == type(IERC165).interfaceId;
+    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
+    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
+
+    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
+        return interfaceId == _INTERFACE_ID_ERC721
+            || interfaceId == _INTERFACE_ID_ERC165;
     }
 
     // Throws if called by any account other than the owner.
@@ -169,7 +172,7 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
     // implementation of IERC721Receiver
     // lock ERC721 token to bridge contract
     // @param   receiverAergoAddress - receiving aergo address
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata receiverAergoAddress) external override (IERC721Receiver) returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes memory receiverAergoAddress) public returns (bytes4) {
 
         string memory receiverStr = string(receiverAergoAddress);
         // Record block number
@@ -235,7 +238,7 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
         uint amountToTransfer = balance - mintedSoFar;
         require(amountToTransfer>0, "Lock tokens before minting");
         MintedERC20 mintAddress = _bridgeTokens[tokenOrigin];
-        if (mintAddress == MintedERC20(address(0))) {
+        if (mintAddress == MintedERC20(0)) {
             // first time bridging this token
             mintAddress = new MintedERC20(tokenOrigin);
             _bridgeTokens[tokenOrigin] = mintAddress;
@@ -298,9 +301,9 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
                 proofIndex++;
             } else {
                 if (bitIsSet(trieKey, i-1)) {
-                    nodeHash = sha256(abi.encodePacked(bytes1(0x00), nodeHash));
+                    nodeHash = sha256(abi.encodePacked(byte(0x00), nodeHash));
                 } else {
-                    nodeHash = sha256(abi.encodePacked(nodeHash, bytes1(0x00)));
+                    nodeHash = sha256(abi.encodePacked(nodeHash, byte(0x00)));
                 }
             }
         }
@@ -330,7 +333,7 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
         bytes memory bstr = new bytes(len);
         uint k = len - 1;
         while (num != 0) {
-            bstr[k--] = bytes1(uint8(48 + num % 10));
+            bstr[k--] = byte(uint8(48 + num % 10));
             num /= 10;
         }
         return string(bstr);
