@@ -42,8 +42,8 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
     event newMintedERC20(string indexed origin, MintedERC20 indexed addr);
     event lockEvent(address indexed sender, IERC20 indexed tokenAddress, string indexed receiver, uint amount);
     event unlockEvent(address indexed sender, IERC20 indexed tokenAddress, address indexed receiver, uint amount);
-    event lockERC721Event(address indexed sender, address indexed tokenAddress, string indexed receiver, uint tokenId, uint blockNumber);
-    event unlockERC721Event(address indexed sender, address indexed tokenAddress, address indexed receiver, uint tokenId, uint blockNumber);
+    event lockERC721Event(address indexed sender, address indexed tokenAddress, string receiver, uint tokenId, uint blockNumber);
+    event unlockERC721Event(address indexed sender, address indexed tokenAddress, address receiver, uint tokenId, uint blockNumber);
     event mintEvent(address indexed sender, MintedERC20 indexed tokenAddress, address indexed receiver, uint amount);
     event burnEvent(address indexed sender, MintedERC20 indexed tokenAddress, string indexed receiver, uint amount);
     event anchorEvent(address indexed sender, bytes32 root, uint height);
