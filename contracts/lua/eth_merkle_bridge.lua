@@ -350,7 +350,7 @@ end
 -- anybody can mint, the receiver is the account who's locked tokenId is recorded
 -- @type    call
 -- @param   receiver (address) Aergo address of receiver
--- @param   tokenId (ubig) the ERC721 token ID locked on Ethereum
+-- @param   tokenId (str128) the ERC721 token ID locked on Ethereum
 -- @param   lockERC721BlockNum (ubig) the block number of the tx that sends ERC721 to the Ether Merkle Bridge
 -- @param   tokenOrigin (ethaddress) Ethereum address without 0x of ERC721 token locked
 -- @param   merkleProof ([]0x hex string) merkle proof of inclusion of locked balance on Ethereum
@@ -358,16 +358,16 @@ end
 -- @event   mintARC2(minter, receiver, tokenId, lockERC721BlockNum, tokenOrigin)
 function mintARC2(receiver, tokenId, lockERC721BlockNum, tokenOrigin, merkleProof)
   _typecheck(receiver, 'address')
-  _typecheck(tokenId, 'ubig')
+  _typecheck(tokenId, 'str128')
   _typecheck(lockERC721BlockNum, 'ubig')
   _typecheck(tokenOrigin, 'ethaddress')
   
   tokenOriginBytes = _abiEncode(tokenOrigin)
   
   -- Verify merkle proof of locked NFT
-  local accountRef = receiver .. bignum.tostring(tokenId) .. tokenOriginBytes
-  -- LocksARC2 is the 13th variable of eth_merkle_bridge.col so mapPosition = 12
-  if not verifyDepositProof(accountRef, 12, bignum.tobyte(lockERC721BlockNum), merkleProof) then
+  local accountRef = receiver .. tokenId .. tokenOriginBytes
+  -- _locksERC721 is the 10th variable of eth_merkle_bridge.col so mapPosition = 9
+  if not verifyDepositProof(accountRef, 9, bignum.tobyte(lockERC721BlockNum), merkleProof) then
       error("failed to verify merkle proof of a locked NFT")
   end
 
@@ -386,8 +386,8 @@ function mintARC2(receiver, tokenId, lockERC721BlockNum, tokenOrigin, merkleProo
   -- Record lockERC721BlockNum
   _mintsARC2[accountRef] = bignum.tostring(lockERC721BlockNum)
   -- Mint tokens
-  contract.call(mintAddress, "mint", receiver, bignum.tostring(tokenId))
-  contract.event("mint", system.getSender(), receiver, bignum.tostring(tokenId), lockERC721BlockNum, tokenOrigin)
+  contract.call(mintAddress, "mint", receiver, tokenId)
+  contract.event("mint", system.getSender(), receiver, tokenId, lockERC721BlockNum, tokenOrigin)
 
   return mintAddress
 end

@@ -28,16 +28,16 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
     mapping(bytes => uint) public _burns;
     // Registers minted balances per account reference : prevents minting more than what was locked
     mapping(bytes => uint) public _mints;
+    // Registers locked token's block number per account reference: user provides merkle proof
+    mapping(bytes => uint) public _locksERC721;
+    // Registers unlocked token's the locked block number per account reference : user provides merkle proof
+    mapping(bytes => uint) public _unlocksERC721;
+
     // _bridgeTokens keeps track of tokens that were received through the bridge
     mapping(string => MintedERC20) public _bridgeTokens;
     // _mintedTokens is the same as _bridgeTokens but keys and values are swapped
     // _mintedTokens is used for preventing a minted token from being locked instead of burnt.
     mapping(address => string) public _mintedTokens;
-
-     // Registers locked token's block number per account reference: user provides merkle proof
-    mapping(bytes => uint) public _locksERC721;
-    // Registers unlocked token's the locked block number per account reference : user provides merkle proof
-    mapping(bytes => uint) public _unlocksERC721;
 
     event newMintedERC20(string indexed origin, MintedERC20 indexed addr);
     event lockEvent(address indexed sender, IERC20 indexed tokenAddress, string indexed receiver, uint amount);
@@ -173,6 +173,8 @@ contract EthMerkleBridge is IERC721Receiver, IERC165 {
     // lock ERC721 token to bridge contract
     // @param   receiverAergoAddress - receiving aergo address
     function onERC721Received(address operator, address from, uint256 tokenId, bytes memory receiverAergoAddress) public returns (bytes4) {
+        require(receiverAergoAddress.length == 52, "Invalid Aergo address length (must be 52)");
+        require(receiverAergoAddress[0] == bytes1('A'), "Invalid Aergo adress (must start with A)");
 
         string memory receiverStr = string(receiverAergoAddress);
         // Record block number
