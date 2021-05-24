@@ -346,6 +346,15 @@ function burn(receiver, amount, mintAddress)
     return originAddress
 end
 
+-- deploy new contract
+-- @type    internal
+-- @param   tokenOrigin (ethaddress) Ethereum address without 0x of token locked used as pegged token name
+local function _deployMintableNFT(tokenOrigin)
+  addr = contract.deploy(mintedARC2Code, tokenOrigin)
+  assert(addr, "failed to create peg NFT contract")
+  return addr
+end
+
 -- mint a pegged ARC2 NFT locked on Ethereum
 -- anybody can mint, the receiver is the account who's locked tokenId is recorded
 -- @type    call
@@ -387,9 +396,36 @@ function mintARC2(receiver, tokenId, lockERC721BlockNum, tokenOrigin, merkleProo
   _mintsARC2[accountRef] = bignum.tostring(lockERC721BlockNum)
   -- Mint tokens
   contract.call(mintAddress, "mint", receiver, tokenId)
-  contract.event("mint", system.getSender(), receiver, tokenId, lockERC721BlockNum, tokenOrigin)
+  contract.event("mintARC2", system.getSender(), receiver, tokenId, lockERC721BlockNum, tokenOrigin)
 
   return mintAddress
+end
+
+-- burn a pegged NFT
+-- @type    call
+-- @param   receiver    (ethaddress) Ethereum address without 0x of receiver
+-- @param   tokenId     (str128) token Id to burn
+-- @param   arc2Address (address) Aergo NFT contract address of pegged token to burn
+-- @return  (string) the block number of the tx that sends ARC2 to the Aergo Merkle Bridge
+-- @event   brunARC2(owner, receiver, tokenId, burnARC2BlockNum, originERC721Address, arc2Address)
+local function _burnARC2(receiver, tokenId, arc2Address)
+  _typecheck(receiver, 'ethaddress')
+  _typecheck(tokenId, 'str128')
+  
+  local originAddress = _mintedNFTs[arc2Address]
+  assert(originAddress ~= nil, "cannot burn NFT : must have been minted by bridge")
+
+  -- record burn
+  local burnARC2BlockNum = bignum.tostring(system.getBlockheight())
+
+  local accountRef = _abiEncode(receiver) .. tokenId .. _abiEncode(originAddress)
+  _burnsARC2[accountRef] = burnARC2BlockNum
+
+  -- Burn NFT
+  contract.call(arc2Address, "burn", tokenId)
+  contract.event("brunARC2", system.getSender(), receiver, tokenId, burnARC2BlockNum, originAddress, arc2Address)
+  
+  return burnARC2BlockNum
 end
 
 -- Implementation of ARC2 token receiver interface
@@ -401,34 +437,6 @@ end
 function onARC2Received(operator, from, tokenId, receiver)
   return _burnARC2(receiver, tokenId, system.getSender())
 end
-
--- burn a pegged NFT
--- @type    call
--- @param   receiver    (ethaddress) Ethereum address without 0x of receiver
--- @param   tokenId     (str128) token Id to burn
--- @param   arc2Address (address) Aergo NFT contract address of pegged token to burn
--- @return  (string) the block number of the tx that sends ARC2 to the Aergo Merkle Bridge
--- @event   brun(owner, receiver, tokenId, burnARC2BlockNum, arc2Address)
-local function _burnARC2(receiver, tokenId, arc2Address)
-  _typecheck(receiver, 'ethaddress')
-  _typecheck(tokenId, 'str128')
-  
-  local originAddress = _mintedNFTs[arc2Address]
-  assert(originAddress ~= nil, "cannot burn NFT : must have been minted by bridge")
-
-  -- record burn
-  local burnARC2BlockNum = bignum.tostring(system.getBlockheight())
-
-  local accountRef = _abiEncode(receiver .. tokenId .. originAddress)
-  _burnsARC2[accountRef] = burnARC2BlockNum
-
-  -- Burn NFT
-  contract.call(arc2Address, "burn", tokenId)
-  contract.event("burn", system.getSender(), receiver, tokenId, burnARC2BlockNum, arc2Address)
-  
-  return burnARC2BlockNum
-end
-
 
 -- unlock tokens
 -- anybody can unlock, the receiver is the account who's burnt balance is recorded
@@ -860,8 +868,8 @@ end
 
 --------------- Custom constructor ---------------------
 --------------------------------------------------------
-function constructor()
-  _init('Query name at token origin', 'PEG')
+function constructor(ethaddr)
+  _init(ethaddr, 'PEG')
 end
 --------------------------------------------------------
 
